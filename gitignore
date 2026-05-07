@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Виртуальные окружения
+.venv/
+venv/
+env/
+
+# Локальные настройки и секреты
+.env
+
+# Локальная база и файлы фоновых задач
+/db.sqlite3
+/celerybeat-schedule*
+
+# Файлы IDE и системы
+.idea/
+.vscode/
+.DS_Store
