@@ -1,0 +1,15 @@
+[Unit]
+Description=Django adweb runserver
+After=network.target
+
+[Service]
+Type=simple
+User=timofey
+Group=timofey
+WorkingDirectory=/opt/adweb
+Environment=DJANGO_SETTINGS_MODULE=adweb.settings
+ExecStart=/opt/adweb/.venv/bin/python manage.py runserver 0.0.0.0:8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

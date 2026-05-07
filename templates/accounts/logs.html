@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Журнал действий | Веб-сервис AD{% endblock %}
+{% block page_title %}{% if active_panel == 'errors' %}Ошибки{% else %}Журнал действий{% endif %}{% endblock %}
+{% block page_subtitle %}История операций с учетными записями и настройками веб-сервиса{% endblock %}
+
+{% block content %}
+  <style>
+    .log-switcher{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+    .log-tab{display:inline-flex;text-decoration:none;border:0;border-radius:12px;padding:10px 16px;background:#e5e7eb;color:#111827;font-weight:700}
+    .log-tab.active{background:#1f3b74;color:#fff}
+  </style>
+  <div class="card">
+    <div class="log-switcher">
+      <a class="log-tab {% if active_panel != 'errors' %}active{% endif %}" href="{% url 'logs' %}">Журнал действий</a>
+      <a class="log-tab {% if active_panel == 'errors' %}active{% endif %}" href="{% url 'error_logs' %}">Ошибки</a>
+    </div>
+    <div style="overflow:auto;">
+      <table>
+        <thead><tr><th>Время</th><th>Кто</th><th>Действие</th><th>Логин</th><th>Детали</th></tr></thead>
+        <tbody>
+          {% for item in logs %}
+            <tr>
+              <td>{{ item.created_at|date:"d.m.Y H:i:s" }}</td>
+              <td>{% if item.actor %}{{ item.actor.username }}{% else %}-{% endif %}</td>
+              <td>{{ item.action }}</td>
+              <td>{{ item.target_login }}</td>
+              <td style="max-width:420px; white-space:pre-wrap;">{{ item.details }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">Записей пока нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

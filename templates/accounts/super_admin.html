@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Управление системой | Веб-сервис AD{% endblock %}
+{% block page_title %}Управление системой{% endblock %}
+{% block page_subtitle %}Филиалы, AD-группы, правила назначения, роли и доступ пользователей{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:14px;">
+  <div class="actions">
+    <a class="btn {% if section == 'branches' %}{% else %}light{% endif %}" href="?section=branches">Филиалы</a>
+    <a class="btn {% if section == 'groups' %}{% else %}light{% endif %}" href="?section=groups">AD-группы</a>
+    <a class="btn {% if section == 'rules' %}{% else %}light{% endif %}" href="?section=rules">Правила по умолчанию</a>
+    <a class="btn {% if section == 'roles' %}{% else %}light{% endif %}" href="?section=roles">Роли</a>
+    <a class="btn {% if section == 'access' %}{% else %}light{% endif %}" href="?section=access">Доступ пользователей</a>
+    <a class="btn {% if section == 'users' %}{% else %}light{% endif %}" href="?section=users">Создание пользователя</a>
+  </div>
+</div>
+{% if section == 'branches' %}
+<div class="card"><h3>Филиалы</h3><form method="post">{% csrf_token %}<input type="hidden" name="section" value="branches"><input type="hidden" name="action" value="create_branch">{{ branch_form.as_p }}<button class="btn" type="submit">Добавить филиал</button></form><div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Код</th><th>Название</th><th>OU DN</th><th>Головной вуз</th><th>Активен</th></tr></thead><tbody>{% for branch in branches %}<tr><td>{{ branch.key }}</td><td>{{ branch.label }}</td><td>{{ branch.ou_dn }}</td><td>{{ branch.is_hq|yesno:"Да,Нет" }}</td><td>{{ branch.is_active|yesno:"Да,Нет" }}</td></tr>{% empty %}<tr><td colspan="5">Нет филиалов</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif section == 'groups' %}
+<div class="card"><h3>AD-группы</h3><form method="post">{% csrf_token %}<input type="hidden" name="section" value="groups"><input type="hidden" name="action" value="create_group">{{ group_form.as_p }}<button class="btn" type="submit">Добавить группу</button></form><div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Код</th><th>Название</th><th>DN</th><th>Активна</th></tr></thead><tbody>{% for group in managed_groups %}<tr><td>{{ group.code }}</td><td>{{ group.name }}</td><td>{{ group.dn }}</td><td>{{ group.is_active|yesno:"Да,Нет" }}</td></tr>{% empty %}<tr><td colspan="4">Нет групп</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif section == 'rules' %}
+<div class="card"><h3>Правила по умолчанию</h3><form method="post">{% csrf_token %}<input type="hidden" name="section" value="rules"><input type="hidden" name="action" value="create_rule">{{ rule_form.as_p }}<button class="btn" type="submit">Добавить правило</button></form><div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Филиал</th><th>Пол</th><th>Группа</th><th>Источник</th><th>Приоритет</th><th>Активно</th></tr></thead><tbody>{% for rule in rules %}<tr><td>{{ rule.branch.label }}</td><td>{{ rule.applies_to_gender|default:"Для всех" }}</td><td>{{ rule.group.name }}</td><td>{{ rule.get_source_display }}</td><td>{{ rule.priority }}</td><td>{{ rule.is_active|yesno:"Да,Нет" }}</td></tr>{% empty %}<tr><td colspan="6">Нет правил</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif section == 'roles' %}
+<div class="card"><h3>Роли</h3><form method="post">{% csrf_token %}<input type="hidden" name="section" value="roles"><input type="hidden" name="action" value="create_role">{{ role_form.as_p }}<button class="btn" type="submit">Сохранить роль</button></form><div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Роль</th><th>Описание</th><th>Права</th></tr></thead><tbody>{% for role in web_roles %}<tr><td>{{ role.group.name }}</td><td>{{ role.description }}</td><td>{% for perm in role.group.permissions.all %}<span class="badge green">{{ perm.codename }}</span> {% empty %}<span class="muted">нет</span>{% endfor %}</td></tr>{% empty %}<tr><td colspan="3">Нет ролей</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif section == 'access' %}
+<div class="card"><h3>Доступ пользователей</h3><form method="post">{% csrf_token %}<input type="hidden" name="section" value="access"><input type="hidden" name="action" value="grant_user_access">{{ access_form.as_p }}<button class="btn" type="submit">Обновить доступ</button></form></div>
+{% elif section == 'users' %}
+<div class="card"><h3>Создание пользователя веб-интерфейса</h3><p class="muted">Пользователь создается в Django с тем же логином, который используется для входа через AD/LDAP. Локальный пароль отключается.</p><form method="post">{% csrf_token %}<input type="hidden" name="section" value="users"><input type="hidden" name="action" value="create_web_user">{{ user_create_form.as_p }}<button class="btn" type="submit">Создать пользователя</button></form></div><div class="card" style="margin-top:16px;"><h3>Пользователи веб-интерфейса</h3><div class="table-wrap"><table><thead><tr><th>Логин</th><th>ФИО</th><th>Email</th><th>Роли</th><th>Активен</th></tr></thead><tbody>{% for user_item in web_users %}<tr><td>{{ user_item.username }}</td><td>{{ user_item.last_name }} {{ user_item.first_name }}</td><td>{{ user_item.email|default:"—" }}</td><td>{% for group in user_item.groups.all %}<span class="badge green">{{ group.name }}</span> {% empty %}<span class="muted">нет</span>{% endfor %}</td><td>{{ user_item.is_active|yesno:"Да,Нет" }}</td></tr>{% empty %}<tr><td colspan="5">Пользователей нет</td></tr>{% endfor %}</tbody></table></div></div>
+{% endif %}
+{% endblock %}

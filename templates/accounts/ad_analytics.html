@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Мониторинг | Веб-сервис AD{% endblock %}
+{% block page_title %}Мониторинг{% endblock %}
+{% block page_subtitle %}Сводка по состоянию учетных записей Active Directory{% endblock %}
+
+{% block content %}
+<style>
+  .monitoring-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:14px}
+  .monitoring-toolbar-updated{margin:0;color:#5b6472;font-size:13px;white-space:nowrap}
+  .refresh-icon-btn{width:42px;height:42px;border-radius:999px;border:1px solid #d9dde5;background:#fff;color:#374151;font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(15,23,42,.06);transition:transform .15s ease, box-shadow .15s ease}
+  .refresh-icon-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(15,23,42,.10)}
+  .refresh-icon-btn:disabled{opacity:.6;cursor:wait;transform:none}
+  .refresh-icon-btn.is-spinning{animation:monitoring-spin .8s linear infinite}
+  @keyframes monitoring-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style>
+
+<div class="monitoring-toolbar">
+  <p class="monitoring-toolbar-updated" id="monitoringUpdatedLabel">Обновлено: {{ monitoring_updated_at|default:'—' }}</p>
+  <button class="refresh-icon-btn" type="button" id="monitoringRefreshBtn" title="Обновить мониторинг" aria-label="Обновить мониторинг">↻</button>
+</div>
+
+<div id="monitoring-root"
+     data-fragment-url="{% url 'ad_analytics_fragment' %}"
+     data-refresh-url="{% url 'ad_analytics_refresh' %}"
+     data-unlock-url="{% url 'ad_analytics_unlock' %}"
+     data-poll-seconds="{{ monitoring_poll_seconds|default:60 }}">
+  {% include "accounts/ad_analytics_content.html" %}
+</div>
+
+<script>
+(function () {
+  const root = document.getElementById('monitoring-root');
+  const refreshBtn = document.getElementById('monitoringRefreshBtn');
+  const updatedLabel = document.getElementById('monitoringUpdatedLabel');
+  if (!root) return;
+
+  const fragmentUrl = root.dataset.fragmentUrl + "?refresh=1";
+  const refreshUrl = root.dataset.refreshUrl;
+  const unlockUrl = root.dataset.unlockUrl;
+  const intervalMs = Math.max(parseInt(root.dataset.pollSeconds || '60', 10), 5) * 1000;
+  const detailsStorageKey = 'ad_monitoring_open_details';
+  let isLoading = false;
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function setRefreshingState(active) {
+    if (!refreshBtn) return;
+    refreshBtn.disabled = active;
+    refreshBtn.classList.toggle('is-spinning', active);
+  }
+
+  function updateUpdatedLabel(updatedAt) {
+    if (!updatedLabel) return;
+    updatedLabel.textContent = 'Обновлено: ' + (updatedAt || '—');
+  }
+
+  function currentOpenDetails() {
+    return Array.from(root.querySelectorAll('details[data-monitoring-section]'))
+      .filter((detail) => detail.open)
+      .map((detail) => detail.dataset.monitoringSection);
+  }
+
+  function saveOpenDetails() {
+    try {
+      window.localStorage.setItem(detailsStorageKey, JSON.stringify(currentOpenDetails()));
+    } catch (err) { }
+  }
+
+  function restoreOpenDetails() {
+    let openSections = [];
+    try {
+      openSections = JSON.parse(window.localStorage.getItem(detailsStorageKey) || '[]');
+    } catch (err) {
+      openSections = [];
+    }
+    root.querySelectorAll('details[data-monitoring-section]').forEach((detail) => {
+      detail.open = openSections.includes(detail.dataset.monitoringSection);
+    });
+  }
+
+  async function loadFragment() {
+    if (isLoading) return;
+    isLoading = true;
+    saveOpenDetails();
+    try {
+      const response = await fetch(fragmentUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error('Не удалось обновить мониторинг');
+      const data = await response.json();
+      if (data.html) {
+        root.innerHTML = data.html;
+        restoreOpenDetails();
+      }
+      updateUpdatedLabel(data.updated_at || root.dataset.updatedAt || '');
+    } catch (err) {
+    } finally {
+      isLoading = false;
+      setRefreshingState(false);
+    }
+  }
+
+  async function refreshNow(mode = 'sync') {
+    if (isLoading) return;
+    setRefreshingState(true);
+    try {
+      const response = await fetch(refreshUrl + '?mode=' + encodeURIComponent(mode), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error('Принудительное обновление не удалось');
+      const data = await response.json();
+      if (data.updated_at) {
+        updateUpdatedLabel(data.updated_at);
+      }
+      await loadFragment();
+    } catch (err) {
+      alert('Не удалось обновить мониторинг. Подробности записаны в журнал ошибок сервера.');
+      setRefreshingState(false);
+    }
+  }
+
+  async function unlockAccount(login, button) {
+    if (!login) return;
+    const confirmed = window.confirm('Разблокировать пользователя ' + login + '?');
+    if (!confirmed) return;
+
+    const originalText = button ? button.textContent : '';
+    if (button) {
+      button.disabled = true;
+      button.textContent = '...';
+    }
+
+    try {
+      const body = new URLSearchParams({ login });
+      const response = await fetch(unlockUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: body.toString()
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || 'Не удалось разблокировать пользователя');
+      }
+      if (data.updated_at) {
+        updateUpdatedLabel(data.updated_at);
+      }
+      await loadFragment();
+    } catch (err) {
+      alert(err.message || 'Не удалось разблокировать пользователя.');
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function () {
+      refreshNow('sync');
+    });
+  }
+
+  root.addEventListener('click', function (event) {
+    const button = event.target.closest('[data-unlock-login]');
+    if (!button) return;
+    unlockAccount(button.dataset.unlockLogin, button);
+  });
+
+  restoreOpenDetails();
+  updateUpdatedLabel(root.dataset.updatedAt || '{{ monitoring_updated_at|default:""|escapejs }}');
+  window.setInterval(loadFragment, intervalMs);
+})();
+</script>
+{% endblock %}

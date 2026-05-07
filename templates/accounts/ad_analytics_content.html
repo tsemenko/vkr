@@ -1,0 +1,189 @@
+<style>
+  .analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .analytics-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .metric-title{font-size:16px;color:#5b6472;margin-bottom:8px}
+  .metric-value{font-size:22px;font-weight:700}
+  .summary-toggle{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-weight:700}
+  .summary-toggle::-webkit-details-marker{display:none}
+  .summary-meta{font-weight:500;color:#5b6472}
+  .chevron{display:inline-block;transition:transform .2s ease}
+  details[open] .chevron{transform:rotate(180deg)}
+  .table-wrap{overflow:auto}
+  .msg{padding:12px 14px;border:1px solid #d9dde5;border-radius:12px;background:#fff}
+  .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px}
+  .badge.green{background:#e6f6ec;color:#0f7a3f}
+  .badge.orange{background:#fff1e6;color:#b45309}
+  .badge.red{background:#fee2e2;color:#b91c1c}
+  .row-green td{background:#f4fbf6}
+  .row-orange td{background:#fff8f1}
+  .row-red td{background:#fff5f5}
+  .monitoring-alert{padding:12px 14px;border-radius:12px;border:1px solid #fecaca;background:#fff5f5;color:#991b1b;margin-bottom:14px}
+  .inline-actions{display:flex;justify-content:flex-end}
+  .unlock-btn{border:1px solid #d9dde5;background:#fff;border-radius:10px;padding:6px 10px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .unlock-btn:hover{background:#f8fafc}
+  .unlock-btn:disabled{opacity:.65;cursor:wait}
+  @media (max-width: 920px){.analytics-columns{grid-template-columns:1fr}}
+</style>
+
+{% if monitoring_status == 'error' %}
+  <div class="monitoring-alert">Ошибка обновления мониторинга: {{ monitoring_error }}</div>
+{% elif monitoring_status == 'warming_up' %}
+  <div class="msg" style="margin-bottom:14px;">Мониторинг прогревается. Данные появятся после первого обновления фоновой задачи или ручного обновления.</div>
+{% endif %}
+
+<div class="card" data-updated-at="{{ monitoring_updated_at|default:'' }}">
+  <div class="analytics-grid" style="margin-top:4px;">
+    <div class="card">
+      <div class="metric-title">Пароль истекает до 10 дней</div>
+      <div class="metric-value">{{ stats.expiry_total }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">Не входили 6–59 дней</div>
+      <div class="metric-value" style="color:#0f7a3f;">{{ stats.inactive_30_total }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">Не входили 60–89 дней</div>
+      <div class="metric-value" style="color:#b45309;">{{ stats.inactive_60_total }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">Не входили 90+ дней</div>
+      <div class="metric-value" style="color:#b91c1c;">{{ stats.inactive_90_total }}</div>
+    </div>
+    <div class="card">
+      <div class="metric-title">Заблокированные пользователи</div>
+      <div class="metric-value" style="color:#b91c1c;">{{ stats.blocked_total }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <details data-monitoring-section="expiry">
+    <summary class="summary-toggle">
+      <span>Пользователи с истекающим паролем</span>
+      <span style="display:flex; align-items:center; gap:12px;">
+        <span class="summary-meta">{{ stats.expiry_total }}</span>
+        <span class="chevron">▼</span>
+      </span>
+    </summary>
+    <div style="margin-top:16px;">
+      {% if expiry_users %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Логин</th>
+                <th>ФИО</th>
+                <th>Срок</th>
+                <th>Дата истечения</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in expiry_users %}
+                <tr class="row-{{ u.color }}">
+                  <td>{{ u.login }}</td>
+                  <td>{{ u.name }}</td>
+                  <td><strong>{{ u.days_display|default:u.days }}</strong></td>
+                  <td>{{ u.expiry_date }}</td>
+                  <td><span class="badge {{ u.color }}">{{ u.color_label }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="msg">Пользователей с истечением пароля в ближайшие 10 дней не найдено.</div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <details data-monitoring-section="inactive">
+    <summary class="summary-toggle">
+      <span>Пользователи, которые давно не входили</span>
+      <span style="display:flex; align-items:center; gap:12px;">
+        <span class="summary-meta">{{ stats.inactive_total }}</span>
+        <span class="chevron">▼</span>
+      </span>
+    </summary>
+    <div class="analytics-columns" style="margin-top:16px;">
+      <div class="card" style="margin:0;">
+        <div class="metric-title" style="font-weight:700;color:#111827;">Не входили 6–59 дней</div>
+        {% if inactive_30 %}
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Логин</th><th>ФИО</th><th>Дней</th></tr></thead>
+              <tbody>
+                {% for u in inactive_30 %}<tr><td>{{ u.login }}</td><td>{{ u.name }}</td><td><strong>{{ u.days_inactive }}</strong></td></tr>{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}<div class="msg">Нет записей.</div>{% endif %}
+      </div>
+      <div class="card" style="margin:0;">
+        <div class="metric-title" style="font-weight:700;color:#111827;">Не входили 60–89 дней</div>
+        {% if inactive_60 %}
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Логин</th><th>ФИО</th><th>Дней</th></tr></thead>
+              <tbody>
+                {% for u in inactive_60 %}<tr><td>{{ u.login }}</td><td>{{ u.name }}</td><td><strong>{{ u.days_inactive }}</strong></td></tr>{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}<div class="msg">Нет записей.</div>{% endif %}
+      </div>
+      <div class="card" style="margin:0;">
+        <div class="metric-title" style="font-weight:700;color:#111827;">Не входили 90+ дней</div>
+        {% if inactive_90 %}
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Логин</th><th>ФИО</th><th>Дней</th></tr></thead>
+              <tbody>
+                {% for u in inactive_90 %}<tr><td>{{ u.login }}</td><td>{{ u.name }}</td><td><strong>{{ u.days_inactive }}</strong></td></tr>{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}<div class="msg">Нет записей.</div>{% endif %}
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <details data-monitoring-section="blocked">
+    <summary class="summary-toggle">
+      <span>Заблокированные пользователи</span>
+      <span style="display:flex; align-items:center; gap:12px;">
+        <span class="summary-meta">{{ stats.blocked_total }}</span>
+        <span class="chevron">▼</span>
+      </span>
+    </summary>
+    <div style="margin-top:16px;">
+      {% if blocked_users %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Логин</th><th>ФИО</th><th>Статус</th><th>Последний вход</th><th>Создан</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for u in blocked_users %}
+                <tr class="row-{{ u.color }}">
+                  <td>{{ u.login }}</td>
+                  <td>{{ u.name }}</td>
+                  <td><span class="badge {{ u.color }}">{{ u.status }}</span></td>
+                  <td>{{ u.last_logon|default:'—' }}</td>
+                  <td>{{ u.created_at|default:'—' }}</td>
+                  <td class="inline-actions"><button type="button" class="unlock-btn" data-unlock-login="{{ u.login }}">Разблокировать</button></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="msg">Заблокированные пользователи не найдены.</div>
+      {% endif %}
+    </div>
+  </details>
+</div>
