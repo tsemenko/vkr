@@ -142,7 +142,7 @@ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
 Создание администратора веб-интерфейса:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py provision_web_user admts --groups "AD Super Admins" --staff
+.\.venv\Scripts\python.exe manage.py provision_web_user admts --groups "AD Super Admins" --superuser
 ```
 
 ### Linux
@@ -271,7 +271,7 @@ sudo systemctl status celery-beat.service --no-pager
 ## Запуск Django на Windows
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py runserver 0.0.0.:8000
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 ```
 
 Открыть в браузере:
