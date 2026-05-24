@@ -1,0 +1,17 @@
+[Unit]
+Description=Gunicorn for adweb
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=adweb
+Group=www-data
+WorkingDirectory=/opt/adweb
+EnvironmentFile=/opt/adweb/.env
+Environment=DJANGO_SETTINGS_MODULE=adweb.settings
+RuntimeDirectory=adweb
+ExecStart=/opt/adweb/.venv/bin/gunicorn adweb.wsgi:application --bind unix:/run/adweb/gunicorn.sock --workers 3 --timeout 120
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -22,8 +22,23 @@
   .unlock-btn{border:1px solid #d9dde5;background:#fff;border-radius:10px;padding:6px 10px;font-weight:600;cursor:pointer;white-space:nowrap}
   .unlock-btn:hover{background:#f8fafc}
   .unlock-btn:disabled{opacity:.65;cursor:wait}
+  .branch-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .branch-tab{border:1px solid #d9dde5;background:#fff;border-radius:999px;padding:9px 13px;font-weight:700;cursor:pointer;color:#374151}
+  .branch-tab.active{background:#2563eb;border-color:#2563eb;color:#fff}
   @media (max-width: 920px){.analytics-columns{grid-template-columns:1fr}}
 </style>
+
+{% if monitoring_branches %}
+  <div class="branch-tabs" data-active-branch="{{ active_branch }}">
+    {% for branch in monitoring_branches %}
+      <button type="button"
+              class="branch-tab {% if branch.key == active_branch %}active{% endif %}"
+              data-monitoring-branch="{{ branch.key }}">
+        {{ branch.label }}
+      </button>
+    {% endfor %}
+  </div>
+{% endif %}
 
 {% if monitoring_status == 'error' %}
   <div class="monitoring-alert">Ошибка обновления мониторинга: {{ monitoring_error }}</div>
@@ -32,6 +47,9 @@
 {% endif %}
 
 <div class="card" data-updated-at="{{ monitoring_updated_at|default:'' }}">
+  {% if active_branch_label %}
+    <h3 style="margin:0 0 12px;">{{ active_branch_label }}</h3>
+  {% endif %}
   <div class="analytics-grid" style="margin-top:4px;">
     <div class="card">
       <div class="metric-title">Пароль истекает до 10 дней</div>

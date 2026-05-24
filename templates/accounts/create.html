@@ -2,12 +2,11 @@
 
 {% block title %}Создание учетной записи | Веб-сервис AD{% endblock %}
 {% block page_title %}Создание учетной записи{% endblock %}
-{% block page_subtitle %}Создание пользователя Active Directory через WinRM и PowerShell{% endblock %}
+{% block page_subtitle %}{% endblock %}
 
 {% block content %}
   <div class="card">
     <h2 style="margin-top:0;">Создание учетной записи</h2>
-    <p class="muted">Шаг 1 — заполните форму и нажмите «Проверить данные». Шаг 2 — подтвердите создание учетной записи.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="stage" value="form">
@@ -26,11 +25,9 @@
       <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
         <div><strong>ФИО:</strong><br>{{ preview.full_name }}</div>
         <div><strong>Логин:</strong><br><code>{{ preview.login }}</code></div>
-        <div><strong>Почта:</strong><br><code>{{ preview.upn }}</code></div>
         <div><strong>Филиал:</strong><br>{{ preview.branch_label }}</div>
         <div><strong>Отдел:</strong><br>{{ preview.department }}</div>
         <div><strong>Должность:</strong><br>{{ preview.position }}</div>
-        <div><strong>Пол:</strong><br>{{ preview.gender_label|default:preview.gender }}</div>
         <div><strong>Дата рождения:</strong><br>{{ preview.birth_date|default:"—" }}</div>
         <div><strong>Срок действия:</strong><br>{{ preview.expiration_date|default:"—" }}</div>
       </div>
@@ -52,7 +49,6 @@
       <textarea id="copybox" rows="6" style="width:100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
 ФИО: {{ result.full_name }}
 Логин: {{ result.login }}
-Почта: {{ result.email }}
 Временный пароль: {{ result.temp_password }}
       </textarea>
       <div class="actions" style="margin-top:10px;">
@@ -96,10 +92,8 @@
     el.addEventListener("blur", () => {
       const digits = (el.value || "").replace(/\D/g, "");
       if (!digits.length) { el.value = ""; return; }
-      if (digits.length >= 4) {
-        const day = digits.slice(0, 2);
-        const month = digits.slice(2, 4);
-        el.value = `${day}.${month}.0004`;
+      if (digits.length >= 8) {
+        el.value = `${digits.slice(0,2)}.${digits.slice(2,4)}.${digits.slice(4,8)}`;
       } else {
         el.value = "";
       }

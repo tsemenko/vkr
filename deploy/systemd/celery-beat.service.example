@@ -4,9 +4,10 @@ After=network.target redis-server.service
 
 [Service]
 Type=simple
-User=timofey
-Group=timofey
+User=adweb
+Group=adweb
 WorkingDirectory=/opt/adweb
+EnvironmentFile=/opt/adweb/.env
 Environment=DJANGO_SETTINGS_MODULE=adweb.settings
 ExecStart=/opt/adweb/.venv/bin/celery -A adweb beat -l info
 Restart=always

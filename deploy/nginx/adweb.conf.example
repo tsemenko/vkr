@@ -1,0 +1,19 @@
+server {
+    listen 80;
+    server_name adweb.example.local 192.168.56.102;
+
+    client_max_body_size 20m;
+
+    location /static/ {
+        alias /opt/adweb/staticfiles/;
+    }
+
+    location / {
+        proxy_pass http://unix:/run/adweb/gunicorn.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}

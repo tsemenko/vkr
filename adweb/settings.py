@@ -3,10 +3,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
+
+
+def env_bool(name: str, default: str = "0") -> bool:
+  return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
 
 SECRET_KEY = os.getenv("SECRET_KEY","dev")
-DEBUG = os.getenv("DEBUG","0") == "1"
+DEBUG = env_bool("DEBUG")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS","127.0.0.1,localhost").split(",") if h.strip()]
 
 INSTALLED_APPS = [
@@ -20,6 +25,7 @@ MIDDLEWARE = [
   "django.middleware.common.CommonMiddleware",
   "django.middleware.csrf.CsrfViewMiddleware",
   "django.contrib.auth.middleware.AuthenticationMiddleware",
+  "accounts.middleware.RequirePasswordChangeMiddleware",
   "django.contrib.messages.middleware.MessageMiddleware",
   "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -36,21 +42,48 @@ TEMPLATES = [{
   ]},
 }]
 WSGI_APPLICATION="adweb.wsgi.application"
-DATABASES={"default":{"ENGINE":"django.db.backends.sqlite3","NAME":BASE_DIR/"db.sqlite3"}}
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if DATABASE_URL:
+  try:
+    import dj_database_url
+  except ImportError as exc:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("Для DATABASE_URL установите пакет dj-database-url.") from exc
+
+  DATABASES = {
+    "default": dj_database_url.parse(
+      DATABASE_URL,
+      conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "600")),
+      ssl_require=env_bool("DB_SSL_REQUIRE"),
+    )
+  }
+else:
+  DATABASES={"default":{"ENGINE":"django.db.backends.sqlite3","NAME":BASE_DIR/"db.sqlite3"}}
 AUTH_PASSWORD_VALIDATORS=[]
 LANGUAGE_CODE="ru-ru"
 TIME_ZONE="Europe/Moscow"
 USE_I18N=True
 USE_TZ=True
 STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD="django.db.models.BigAutoField"
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT")
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS")
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD")
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE")
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE")
+CSRF_TRUSTED_ORIGINS = [h.strip() for h in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if h.strip()]
+if env_bool("USE_X_FORWARDED_PROTO"):
+  SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Аутентификация веб-интерфейса
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
-LDAP_ENABLED = os.getenv("LDAP_ENABLED", "0") == "1"
+LDAP_ENABLED = env_bool("LDAP_ENABLED")
 LDAP_SERVER_URI = os.getenv("LDAP_SERVER_URI", "")
 LDAP_BIND_DN = os.getenv("LDAP_BIND_DN", "")
 LDAP_BIND_PASSWORD = os.getenv("LDAP_BIND_PASSWORD", "")
@@ -124,7 +157,7 @@ AD_HOME_PAGE = os.getenv("AD_HOME_PAGE","https://portal.muiv.ru")
 AD_DEFAULT_PASSWORD = os.getenv("AD_DEFAULT_PASSWORD","Test1234!")
 
 BRANCH_LABELS = {
-  "hq": os.getenv("BRANCH_HQ_LABEL","1"),
+  "hq": os.getenv("BRANCH_HQ_LABEL","Головной вуз"),
   "sposad": os.getenv("BRANCH_SPOSAD_LABEL","Филиал в г. Сергиев Посад"),
   "penza": os.getenv("BRANCH_PENZA_LABEL","Филиал в г. Пенза"),
   "ryazan": os.getenv("BRANCH_RYAZAN_LABEL","Филиал в г. Рязань"),
@@ -144,9 +177,9 @@ PROFILE_HQ = os.getenv("PROFILE_HQ", r"\\serverf\pr\{login}")
 HOME_HQ = os.getenv("HOME_HQ", r"\\serverhf\hf\{login}")
 PROFILE_BRANCH = os.getenv("PROFILE_BRANCH", r"\\serverf\bpr\{login}")
 
-FILESHARES_ENABLED = os.getenv("FILESHARES_ENABLED","0") == "1"
+FILESHARES_ENABLED = env_bool("FILESHARES_ENABLED")
 
-LOGGING_ENABLED = os.getenv("LOGGING_ENABLED","0") == "1"
+LOGGING_ENABLED = env_bool("LOGGING_ENABLED")
 LOG_FILE1 = os.getenv("LOG_FILE1","")
 LOG_FILE2 = os.getenv("LOG_FILE2","")
 
@@ -155,7 +188,7 @@ GROUPS_HQ_F = [g.strip() for g in os.getenv("GROUPS_HQ_F","").split(",") if g.st
 GROUPS_BRANCH = [g.strip() for g in os.getenv("GROUPS_BRANCH","").split(",") if g.strip()]
 GROUPS_BRANCH_F = [g.strip() for g in os.getenv("GROUPS_BRANCH_F","").split(",") if g.strip()]
 
-EXCHANGE_ENABLED = os.getenv("EXCHANGE_ENABLED","0") == "1"
+EXCHANGE_ENABLED = env_bool("EXCHANGE_ENABLED")
 EXCHANGE_URI = os.getenv("EXCHANGE_URI","")
 EXCHANGE_AUTH = os.getenv("EXCHANGE_AUTH","Kerberos")
 EXCHANGE_USER = os.getenv("EXCHANGE_USER","")
@@ -172,7 +205,7 @@ MONITORING_CACHE_KEY = os.getenv("MONITORING_CACHE_KEY", "ad_monitoring_snapshot
 MONITORING_CACHE_TIMEOUT = int(os.getenv("MONITORING_CACHE_TIMEOUT", "120"))
 MONITORING_REFRESH_SECONDS = int(os.getenv("MONITORING_REFRESH_SECONDS", "60"))
 MONITORING_FRAGMENT_POLL_SECONDS = int(os.getenv("MONITORING_FRAGMENT_POLL_SECONDS", "60"))
-MONITORING_FORCE_SYNC_ON_MISS = os.getenv("MONITORING_FORCE_SYNC_ON_MISS", "1") == "1"
+MONITORING_FORCE_SYNC_ON_MISS = env_bool("MONITORING_FORCE_SYNC_ON_MISS")
 
 REDIS_URL = os.getenv("REDIS_URL", "")
 if REDIS_URL:

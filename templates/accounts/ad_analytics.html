@@ -24,6 +24,7 @@
      data-fragment-url="{% url 'ad_analytics_fragment' %}"
      data-refresh-url="{% url 'ad_analytics_refresh' %}"
      data-unlock-url="{% url 'ad_analytics_unlock' %}"
+     data-active-branch="{{ active_branch|default:'' }}"
      data-poll-seconds="{{ monitoring_poll_seconds|default:60 }}">
   {% include "accounts/ad_analytics_content.html" %}
 </div>
@@ -35,12 +36,21 @@
   const updatedLabel = document.getElementById('monitoringUpdatedLabel');
   if (!root) return;
 
-  const fragmentUrl = root.dataset.fragmentUrl + "?refresh=1";
+  const fragmentUrl = root.dataset.fragmentUrl;
   const refreshUrl = root.dataset.refreshUrl;
   const unlockUrl = root.dataset.unlockUrl;
   const intervalMs = Math.max(parseInt(root.dataset.pollSeconds || '60', 10), 5) * 1000;
   const detailsStorageKey = 'ad_monitoring_open_details';
   let isLoading = false;
+  let activeBranch = root.dataset.activeBranch || '';
+
+  function withBranch(url) {
+    const result = new URL(url, window.location.origin);
+    if (activeBranch) {
+      result.searchParams.set('branch', activeBranch);
+    }
+    return result.pathname + result.search;
+  }
 
   function getCsrfToken() {
     const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
@@ -87,7 +97,7 @@
     isLoading = true;
     saveOpenDetails();
     try {
-      const response = await fetch(fragmentUrl, {
+      const response = await fetch(withBranch(fragmentUrl), {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin'
       });
@@ -105,11 +115,16 @@
     }
   }
 
-  async function refreshNow(mode = 'sync') {
+  async function refreshNow(mode = 'async') {
     if (isLoading) return;
     setRefreshingState(true);
     try {
-      const response = await fetch(refreshUrl + '?mode=' + encodeURIComponent(mode), {
+      const refreshRequestUrl = new URL(refreshUrl, window.location.origin);
+      refreshRequestUrl.searchParams.set('mode', mode);
+      if (activeBranch) {
+        refreshRequestUrl.searchParams.set('branch', activeBranch);
+      }
+      const response = await fetch(refreshRequestUrl.pathname + refreshRequestUrl.search, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin'
       });
@@ -137,7 +152,7 @@
     }
 
     try {
-      const body = new URLSearchParams({ login });
+      const body = new URLSearchParams({ login, branch: activeBranch });
       const response = await fetch(unlockUrl, {
         method: 'POST',
         headers: {
@@ -172,6 +187,14 @@
   }
 
   root.addEventListener('click', function (event) {
+    const branchButton = event.target.closest('[data-monitoring-branch]');
+    if (branchButton) {
+      activeBranch = branchButton.dataset.monitoringBranch || '';
+      root.dataset.activeBranch = activeBranch;
+      loadFragment();
+      return;
+    }
+
     const button = event.target.closest('[data-unlock-login]');
     if (!button) return;
     unlockAccount(button.dataset.unlockLogin, button);
