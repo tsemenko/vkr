@@ -14,6 +14,6 @@ class Command(BaseCommand):
                 f"филиалы={result['branches']}, "
                 f"AD-группы={result['groups']}, "
                 f"правила={result['rules']}, "
-                f"роли={result['roles']}"
+                f"роли={result['roles']}, удалено_ролей={result.get('removed_roles', 0)}"
             )
         )

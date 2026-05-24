@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% load accounts_extras %}
 
-{% block title %}Журнал действий | Веб-сервис AD{% endblock %}
-{% block page_title %}{% if active_panel == 'errors' %}Ошибки{% else %}Журнал действий{% endif %}{% endblock %}
-{% block page_subtitle %}История операций с учетными записями и настройками веб-сервиса{% endblock %}
+{% block title %}Журнал | Веб-сервис AD{% endblock %}
+{% block page_title %}Журнал{% endblock %}
+{% block page_subtitle %}{% endblock %}
 
 {% block content %}
   <style>
@@ -12,19 +13,22 @@
   </style>
   <div class="card">
     <div class="log-switcher">
-      <a class="log-tab {% if active_panel != 'errors' %}active{% endif %}" href="{% url 'logs' %}">Журнал действий</a>
+      <a class="log-tab {% if active_panel == 'ad' %}active{% endif %}" href="{% url 'logs' %}">Журнал</a>
       <a class="log-tab {% if active_panel == 'errors' %}active{% endif %}" href="{% url 'error_logs' %}">Ошибки</a>
+      {% if user.is_superuser or user|has_group:'AD Super Admins' %}
+        <a class="log-tab {% if active_panel == 'system' %}active{% endif %}" href="{% url 'system_logs' %}">Системный журнал</a>
+      {% endif %}
     </div>
     <div style="overflow:auto;">
       <table>
-        <thead><tr><th>Время</th><th>Кто</th><th>Действие</th><th>Логин</th><th>Детали</th></tr></thead>
+        <thead><tr><th>Время</th><th>Кто</th><th>Действие</th><th>{% if log_kind == 'system' %}Объект{% else %}Логин{% endif %}</th><th>Детали</th></tr></thead>
         <tbody>
           {% for item in logs %}
             <tr>
               <td>{{ item.created_at|date:"d.m.Y H:i:s" }}</td>
               <td>{% if item.actor %}{{ item.actor.username }}{% else %}-{% endif %}</td>
-              <td>{{ item.action }}</td>
-              <td>{{ item.target_login }}</td>
+              <td>{{ item.action_label }}</td>
+              <td>{% if log_kind == 'system' %}{{ item.target }}{% else %}{{ item.target_login }}{% endif %}</td>
               <td style="max-width:420px; white-space:pre-wrap;">{{ item.details }}</td>
             </tr>
           {% empty %}

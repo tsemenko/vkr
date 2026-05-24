@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
-from .ad_logic import get_ad_analytics_snapshot
+from .ad_logic import get_ad_analytics_snapshot_by_branches, monitoring_branches
 
 
 def _cache_key() -> str:
@@ -19,6 +19,8 @@ def _cache_backend_name() -> str:
 
 
 def empty_snapshot(status: str = 'warming_up', error: str = '') -> dict:
+    branches = monitoring_branches()
+    active_branch = branches[0]["key"] if branches else ""
     return {
         'stats': {
             'expiry_total': 0,
@@ -44,12 +46,15 @@ def empty_snapshot(status: str = 'warming_up', error: str = '') -> dict:
         'monitoring_cache_backend': _cache_backend_name(),
         'monitoring_source': 'empty',
         'monitoring_poll_seconds': settings.MONITORING_FRAGMENT_POLL_SECONDS,
+        'monitoring_branches': branches,
+        'branch_snapshots': {},
+        'active_branch': active_branch,
     }
 
 
 def build_snapshot() -> dict:
     started = time.perf_counter()
-    snapshot = get_ad_analytics_snapshot(max_days=settings.AD_ANALYTICS_MAX_DAYS)
+    snapshot = get_ad_analytics_snapshot_by_branches(max_days=settings.AD_ANALYTICS_MAX_DAYS)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     updated_at = timezone.localtime(timezone.now())
 
@@ -66,7 +71,10 @@ def build_snapshot() -> dict:
 
 
 def save_snapshot(snapshot: dict) -> dict:
-    cache.set(_cache_key(), deepcopy(snapshot), settings.MONITORING_CACHE_TIMEOUT)
+    try:
+        cache.set(_cache_key(), deepcopy(snapshot), settings.MONITORING_CACHE_TIMEOUT)
+    except Exception:
+        pass
     return snapshot
 
 
@@ -75,7 +83,10 @@ def refresh_snapshot() -> dict:
 
 
 def get_cached_snapshot() -> dict | None:
-    snapshot = cache.get(_cache_key())
+    try:
+        snapshot = cache.get(_cache_key())
+    except Exception:
+        return None
     if not snapshot:
         return None
     snapshot = deepcopy(snapshot)

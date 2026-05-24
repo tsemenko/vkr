@@ -249,25 +249,31 @@
       </div>
 
       <nav class="sidebar-nav">
+        {% if user|has_section:'monitoring' %}
         <a href="/" class="nav-link {% if request.path == '/' or request.path == '/ad-analytics/' %}active{% endif %}" title="Мониторинг">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 5-7"/></svg>
           </span>
           <span class="nav-label">Мониторинг</span>
         </a>
+        {% endif %}
+        {% if user|has_section:'create_user' %}
         <a href="/create/" class="nav-link {% if request.path == '/create/' %}active{% endif %}" title="Создание учетной записи">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
           </span>
           <span class="nav-label">Создание учетной записи</span>
         </a>
-        <a href="/logs/" class="nav-link {% if request.path == '/logs/' or request.path == '/logs/errors/' %}active{% endif %}" title="Журнал действий">
+        {% endif %}
+        {% if user|has_section:'logs' %}
+        <a href="/logs/" class="nav-link {% if request.path == '/logs/' or request.path == '/logs/errors/' or request.path == '/logs/system/' %}active{% endif %}" title="Журнал">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           </span>
-          <span class="nav-label">Журнал действий</span>
+          <span class="nav-label">Журнал</span>
         </a>
-        {% if user|has_group:'AD Super Admins' %}
+        {% endif %}
+        {% if user|can_manage_system %}
         <a href="/system/" class="nav-link {% if request.path == '/system/' %}active{% endif %}" title="Управление системой">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/></svg>

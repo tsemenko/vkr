@@ -32,9 +32,9 @@ pip install -r requirements.txt
 Пример:
 
 ```env
-REDIS_URL=redis://127.0.0.1:6379/1
-CELERY_BROKER_URL=redis://127.0.0.1:6379/0
-CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
+REDIS_URL=redis://192.168.56.102:6379/1
+CELERY_BROKER_URL=redis://192.168.56.102:6379/0
+CELERY_RESULT_BACKEND=redis://192.168.56.102:6379/1
 AD_USERS_SEARCH_BASE=OU=Users,DC=lab,DC=local
 MONITORING_CACHE_TIMEOUT=120
 MONITORING_REFRESH_SECONDS=15
@@ -50,7 +50,7 @@ sudo systemctl enable --now redis-server
 redis-cli ping
 ```
 
-### 2. Первый прогрев snapshot
+### 2. Первый прогрев снимка мониторинга
 ```bash
 source .venv/bin/activate
 python manage.py refresh_ad_snapshot
