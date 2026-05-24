@@ -157,7 +157,7 @@ python manage.py bootstrap_directory_config
 Создание администратора веб-интерфейса:
 
 ```bash
-python manage.py provision_web_user admts --groups "AD Super Admins" --staff
+python manage.py provision_web_user admin --groups "AD Super Admins" --staff
 ```
 
 Команда выдаст временный пароль. При первом входе пользователь должен поменять пароль.
