@@ -76,70 +76,89 @@ chown -R adweb:www-data /opt/adweb
 cd /opt/adweb
 ```
 
-## 4. Настройка PostgreSQL
+# Настройка базы данных PostgreSQL
 
-На сервере с Django-приложением не требуется устанавливать и настраивать PostgreSQL, если база данных уже развернута на отдельном сервере. На сервере приложения устанавливаются только зависимости Python для подключения к PostgreSQL.
 
-Django подключается к PostgreSQL через переменную окружения DATABASE_URL, которая указывается в файле .env.
+На сервере с Django-приложением не требуется устанавливать и настраивать PostgreSQL, если база данных уже развернута на отдельном сервере. На сервере приложения устанавливаются только Python-зависимости для подключения к PostgreSQL.
+
+Django подключается к PostgreSQL через переменную окружения `DATABASE_URL`, которая указывается в файле `.env`.
+
+## Подключение к внешнему PostgreSQL
 
 Пример строки подключения:
 
+```env
 DATABASE_URL=postgres://adweb_user:strong_password@192.168.1.20:5432/adweb_db
+```
 
 Где:
 
+```text
 adweb_user       — пользователь PostgreSQL
 strong_password  — пароль пользователя PostgreSQL
 192.168.1.20     — IP-адрес сервера PostgreSQL
 5432             — порт PostgreSQL
 adweb_db         — имя базы данных
+```
 
 На сервере PostgreSQL заранее должны быть созданы база данных и пользователь с правами на эту базу.
 
-Если PostgreSQL разворачивается на этом же сервере, базу данных можно создать вручную:
+После настройки `.env` на сервере приложения необходимо выполнить миграции Django:
 
+```bash
+cd /opt/adweb
+source .venv/bin/activate
+python manage.py migrate
+```
+
+## Создание базы данных PostgreSQL
+
+Если PostgreSQL разворачивается на этом же сервере.
+
+```bash
 runuser -u postgres -- psql
+```
 
-Внутри psql выполнить:
+Внутри `psql` выполнить:
 
+```sql
 CREATE USER adweb_user WITH PASSWORD 'change-me-strong-password';
 CREATE DATABASE adweb_db OWNER adweb_user;
 ALTER ROLE adweb_user SET client_encoding TO 'utf8';
 ALTER ROLE adweb_user SET default_transaction_isolation TO 'read committed';
 ALTER ROLE adweb_user SET timezone TO 'Europe/Moscow';
 \q
+```
 
 Для PostgreSQL 15 и выше дополнительно выполнить:
 
+```bash
 runuser -u postgres -- psql -d adweb_db -c "GRANT ALL ON SCHEMA public TO adweb_user;"
+```
 
-После настройки подключения необходимо выполнить миграции Django:
+## Проверка подключения
 
+После указания `DATABASE_URL` можно проверить подключение через Django:
+
+```bash
 cd /opt/adweb
 source .venv/bin/activate
+python manage.py check
 python manage.py migrate
 ```
 
+Если команды выполняются без ошибок, приложение успешно подключается к PostgreSQL.
+
+
 ## 5. Python-окружение и зависимости
 
-Создать виртуальное окружение и установить production-зависимости:
+Создать виртуальное окружение и установить зависимости:
 
 ```bash
 cd /opt/adweb
 runuser -u adweb -- python3 -m venv .venv
 runuser -u adweb -- /opt/adweb/.venv/bin/python -m pip install --upgrade pip
 runuser -u adweb -- /opt/adweb/.venv/bin/python -m pip install -r requirements-prod.txt
-```
-
-Если файла `requirements-prod.txt` нет, его нужно добавить в корень проекта. Содержимое:
-
-```text
--r requirements.txt
-gunicorn==23.0.0
-psycopg[binary]==3.2.3
-dj-database-url==2.3.0
-django-auth-ldap==4.8.0
-python-ldap==3.4.4
 ```
 
 ## 6. Production `.env`
